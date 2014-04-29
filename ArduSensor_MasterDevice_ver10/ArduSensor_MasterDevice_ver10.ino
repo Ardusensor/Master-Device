@@ -102,7 +102,6 @@ void loop()
             jUploadEnd();
             
             Serial.println(F("Sent!"));
-//            emptyBuffer();
               
             nrOfUpdates = 0; 
       
@@ -118,11 +117,6 @@ void loop()
       }
 }
 
-//void emptyBuffer(){ //Clear the buffers used for storing information between uploads.
-//  memset(buffer,0,sizeof(buffer));
-//  memset(xbeeAddressMsb, 0, sizeof(xbeeAddressMsb));
-//  memset(xbeeAddressLsb, 0, sizeof(xbeeAddressLsb));
-//}
 
 boolean checkFirstTimerOverflow(){ //Check whether lastCheck is bigger than millis(), this signals whether a restart has occurred or millis() has overflown
   if(lastCheck > millis()){
