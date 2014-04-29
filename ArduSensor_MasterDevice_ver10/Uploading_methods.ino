@@ -11,6 +11,8 @@ void jCoordinatorData(){
   client.print(voltage);
   client.print(F(",\"uptime\":"));
   client.print(millis());
+  client.flush();
+  delay(100);
   client.print(F("\"first_overflow\":"));
   client.print(checkFirstTimerOverflow());
   client.print(F(",\"tries\":"));
