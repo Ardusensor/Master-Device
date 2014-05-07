@@ -26,12 +26,12 @@ ZBRxIoSampleResponse ioSample = ZBRxIoSampleResponse();
 
 //Server details
 char server[] = "94.246.204.102"; //IP address of server
-int port = 18151; //Port for server. 18151 for logs, 18150 for data
+int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 
 //Global variables.
 unsigned long prevUpdate; //Time since previous update in milliseconds
-unsigned long delayTime = 1800000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
+unsigned long delayTime = 600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 boolean firstOverflow = false;
 int nrOfTries = 0; //Count the number of tries and successful uploads to the server for debugging.
