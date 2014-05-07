@@ -13,7 +13,7 @@ void jCoordinatorData(){
   client.print(millis());
   client.flush();
   delay(100);
-  client.print(F("\"first_overflow\":"));
+  client.print(F(",\"first_overflow\":"));
   client.print(checkFirstTimerOverflow());
   client.print(F(",\"tries\":"));
   client.print(nrOfTries);
