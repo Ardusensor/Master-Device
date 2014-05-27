@@ -31,12 +31,12 @@ int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 //Global variables.
 unsigned long prevUpdate; //Time since previous update in milliseconds
-unsigned long delayTime = 600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
+unsigned long delayTime = 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 boolean firstOverflow = false;
 int nrOfTries = 0; //Count the number of tries and successful uploads to the server for debugging.
 int nrOfSuccess = 0;
-int ID = 20; //The unique ID of this device.
+int ID = 30; //The unique ID of this device.
 int nrOfUpdates = 0; //Don't change this. This keeps count of the number of data packets recieved from End Devices.
 
 int maxUpdates = 20; //How many updates to collect before uploading them to the server.
