@@ -25,7 +25,7 @@ ZBRxResponse rx = ZBRxResponse();
 ZBRxIoSampleResponse ioSample = ZBRxIoSampleResponse();
 
 //Server details
-char server[] = "94.246.204.102"; //IP address of server
+char server[] = "www.ardusensor.com"; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 
