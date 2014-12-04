@@ -36,6 +36,9 @@ void handleXbeeRxMessage(uint8_t *data, uint8_t length){
     //Serial.println(tmp);
     //Serial.println(buffer[nrOfUpdates][4]);
     
+    
+    Serial.print("RSSI: ");
+    Serial.println(rssi[nrOfUpdates]);
     Serial.print(F("Number Of Updates: "));
     Serial.println(++nrOfUpdates);
   

@@ -42,6 +42,12 @@ void jDeviceReadings(int nr){
   client.flush();
   delay(100);
   client.print(buffer[nr][3]);
+  
+  
+  //TEST
+  client.print(F(",\"packet_rssi\":"));
+  client.print(rssi[nr]);
+  
   client.print(F(",\"sendcounter\":"));
   client.print(buffer[nr][4]);
   client.print(F("}"));
