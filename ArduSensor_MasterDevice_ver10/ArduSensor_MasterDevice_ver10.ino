@@ -33,14 +33,17 @@ ZBRxIoSampleResponse ioSample = ZBRxIoSampleResponse();
 char server[] = "www.ardusensor.com"; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
-//Global variables.
-unsigned long prevUpdate = 1600000 - 60000; //Time since previous update in milliseconds. - 5000 to make the first upload within 5 seconds of booting.
+/* ID!!!! */
+int ID = 156; //The unique ID of this device. // 156 oli viimane mis Alarile laivi läks
+/* ID!!!! */
+
+//Global variables.4
+unsigned long prevUpdate = 1600000 - 120000; //Time since previous update in milliseconds. - 5000 to make the first upload within 5 seconds of booting.
 unsigned long delayTime = 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 boolean firstOverflow = false;
 int nrOfTries = 0; //Count the number of tries and successful uploads to the server for debugging.
 int nrOfSuccess = 0;
-int ID = 145; //The unique ID of this device.
 int nrOfUpdates = 0; //Don't change this. This keeps count of the number of data packets recieved from End Devices.
 
 int voltage; //Battery voltage
@@ -58,7 +61,7 @@ String xbeeAddressLsb[maxUpdates]; //LSB for addresses.
 void setup()
 {
    Serial2.begin(9600); //Serial connection to XBee.
-   xbee.setSerial(Serial2); //Set XBee to use Serial 1.
+   xbee.setSerial(Serial2); //Set XBee to use Serial 2.
    Serial.begin(9600); //Start serial connection with PC.
    Serial.println(F("Starting up...")); //Greetings
    Serial.print(F("ID: "));
