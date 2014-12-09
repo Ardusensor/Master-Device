@@ -34,7 +34,7 @@ char server[] = "www.ardusensor.com"; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 /* ID!!!! */
-int ID = 156; //The unique ID of this device. // 156 oli viimane mis Alarile laivi läks
+int ID = 161; //The unique ID of this device. // 156 oli viimane mis Alarile laivi läks
 /* ID!!!! */
 
 //Global variables.4
