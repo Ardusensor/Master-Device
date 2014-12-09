@@ -1,6 +1,8 @@
 #include <GSM.h>
 #include <XBee.h>
 
+#define LED 13
+
 //This data should reflect your SIM card and your operator's settings. Refer to your operators website for the information.
 #define PINNUMBER ""  // PIN Number
 
@@ -34,7 +36,7 @@ char server[] = "www.ardusensor.com"; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 /* ID!!!! */
-int ID = 161; //The unique ID of this device. // 156 oli viimane mis Alarile laivi läks
+int ID = 162; //The unique ID of this device. // 156 oli viimane mis Alarile laivi läks
 /* ID!!!! */
 
 //Global variables.4
@@ -75,6 +77,7 @@ void setup()
    Serial.println();
    pinMode(34, OUTPUT);
    pinMode(xbeeRssiPin, INPUT);
+   pinMode(LED, OUTPUT); // Status LED, shows modem status as seen by CPU.  
 }
 
 void loop()

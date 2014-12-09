@@ -2,8 +2,7 @@
 void connectGSM(){ 
   Serial1.end(); //Stop XBee Serial just in case.
   Serial.println(F("Connecting to GSM network..."));
-  digitalWrite(34, HIGH);
-  delay(5000);
+  digitalWrite(LED, HIGH);
   theGSM3ShieldV1ModemCore.println("AT"); //Recommended AT commands to wake up modem. The GSM librabry has a bug that causes the program to hang on begin(), this should help alleviate the problem. A fix has also been implemented into the included GSM library.
   delay(100);
   theGSM3ShieldV1ModemCore.println("AT");
@@ -52,8 +51,10 @@ void disconnectServer(){
 void disconnectGSM(){
   theGSM3ShieldV1ModemCore.println("AT+QIDEACT");
   delay(2000);
-  digitalWrite(34, LOW);//pin 34 LOW to reset modem
-  delay(5000); //Just in case.
+  digitalWrite(34, LOW);//pin 34 LOW for <1s to reset modem
+  delay(900);
+  digitalWrite(34, HIGH);
+  digitalWrite(LED, LOW);
   Serial1.begin(9600); //Start XBee Serial connection again.
   Serial.println(F("GSM shutdown."));
 }
