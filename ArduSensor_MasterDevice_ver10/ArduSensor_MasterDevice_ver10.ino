@@ -1,7 +1,7 @@
 #include <GSM.h>
 #include <XBee.h>
 
-#define LED 13
+#define LED 7 // Led on PIN 13, PB7
 
 //This data should reflect your SIM card and your operator's settings. Refer to your operators website for the information.
 #define PINNUMBER ""  // PIN Number
@@ -40,7 +40,7 @@ int ID = 162; //The unique ID of this device. // 156 oli viimane mis Alarile lai
 /* ID!!!! */
 
 //Global variables.4
-unsigned long prevUpdate = 1600000 - 120000; //Time since previous update in milliseconds. - 5000 to make the first upload within 5 seconds of booting.
+unsigned long prevUpdate = 0;//1600000 - 120000; //Time since previous update in milliseconds. - 5000 to make the first upload within 5 seconds of booting.
 unsigned long delayTime = 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 boolean firstOverflow = false;
@@ -77,6 +77,7 @@ void setup()
    Serial.println();
    pinMode(34, OUTPUT);
    pinMode(xbeeRssiPin, INPUT);
+   DDRB |= bit(LED);
    pinMode(LED, OUTPUT); // Status LED, shows modem status as seen by CPU.  
 }
 
@@ -85,6 +86,7 @@ void loop()
   //Recieve and handle XBee packets.
   xbee.readPacket();
   if (xbee.getResponse().isAvailable()) {
+  bitRead(PORTB, LED) ? bitClear(PORTB, LED) : bitSet(PORTB, LED); // Flip LED
     if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
       xbee.getResponse().getZBRxResponse(rx);
       
@@ -99,7 +101,7 @@ void loop()
         Serial.println(xbeeAddressLsb[nrOfUpdates]);
        //showFrameData(); //Prints the whole incoming frame and metadata. Good for debugging.
         handleXbeeRxMessage(rx.getData(), rx.getDataLength()); //Write the contents of the recieved packet to buffer.
-        
+        bitRead(PORTB, LED) ? bitClear(PORTB, LED) : bitSet(PORTB, LED);
 //        // If this is the first time this XBEE has sent us a packet, upload now.
 //        if(IsAddressInArray(xbeeAddressMsb[nrOfUpdates], xbeeAddressLsb[nrOfUpdates]) == true){
 //          prevUpdate = delayTime;
