@@ -13,28 +13,18 @@ void handleXbeeRxMessage(uint8_t *data, uint8_t length){
   if(tmp.startsWith("<") && tmp.endsWith(">")){
     
     buffer[nrOfUpdates][0] = tmp.substring(1, tmp.indexOf(";")).toInt();
-    //Serial.println(tmp);
-    //Serial.println(buffer[nrOfUpdates][0]);
     clearRead();
     
     buffer[nrOfUpdates][1] = tmp.substring(tmp.lastIndexOf("x") + 1).toInt();
-    //Serial.println(tmp);
-    //Serial.println(buffer[nrOfUpdates][1]);
     clearRead();
     
     buffer[nrOfUpdates][2] = tmp.substring(tmp.lastIndexOf("x") + 1).toInt();
-    //Serial.println(tmp);
-    //Serial.println(buffer[nrOfUpdates][2]);
     clearRead();
     
     buffer[nrOfUpdates][3] = tmp.substring(tmp.lastIndexOf("x") + 1).toInt();
-    //Serial.println(tmp);
-    //Serial.println(buffer[nrOfUpdates][3]);
     clearRead();
     
     buffer[nrOfUpdates][4] = tmp.substring(tmp.lastIndexOf("x") + 1).toInt();
-    //Serial.println(tmp);
-    //Serial.println(buffer[nrOfUpdates][4]);
     
     
     Serial.print("RSSI: ");

@@ -50,11 +50,6 @@ void disconnectServer(){
 //Power down the GSM module to save power.
 void disconnectGSM(){
   theGSM3ShieldV1ModemCore.println("AT+QIDEACT");
-  delay(2000);
-  /*
-  digitalWrite(34, LOW);//pin 34 LOW for <1s to reset modem
-  delay(900);
-  digitalWrite(34, HIGH);*/
   gsmAccess.shutdown();
   bitRead(PORTB, LED) ? bitClear(PORTB, LED) : bitSet(PORTB, LED);
   Serial1.begin(9600); //Start XBee Serial connection again.

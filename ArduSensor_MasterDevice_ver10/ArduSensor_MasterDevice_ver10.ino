@@ -32,15 +32,15 @@ ZBRxResponse rx = ZBRxResponse();
 ZBRxIoSampleResponse ioSample = ZBRxIoSampleResponse();
 
 //Server details
-char server[] = "www.ardusensor.com"; //IP address of server
+char server[] = ""; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 /* ID!!!! */
-int ID = 162; //The unique ID of this device. // 156 oli viimane mis Alarile laivi läks
+int ID = 140; //The unique ID of this device.
 /* ID!!!! */
 
 //Global variables.4
-unsigned long prevUpdate = 0;//1600000 - 120000; //Time since previous update in milliseconds. - 5000 to make the first upload within 5 seconds of booting.
+unsigned long prevUpdate = 1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
 unsigned long delayTime = 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 boolean firstOverflow = false;
@@ -58,7 +58,6 @@ unsigned long rssi[maxUpdates];
 int buffer[maxUpdates][5]; //Array of updates, this is where the data from updates recieved from XBee are kept until a successful upload.
 String xbeeAddressMsb[maxUpdates]; //Holds the MSB of the unique XBee addresses for all recieved packets. These are sent to the server
 String xbeeAddressLsb[maxUpdates]; //LSB for addresses.
-//boolean newAddress = false;
 
 void setup()
 {
@@ -102,10 +101,7 @@ void loop()
        //showFrameData(); //Prints the whole incoming frame and metadata. Good for debugging.
         handleXbeeRxMessage(rx.getData(), rx.getDataLength()); //Write the contents of the recieved packet to buffer.
         bitRead(PORTB, LED) ? bitClear(PORTB, LED) : bitSet(PORTB, LED);
-//        // If this is the first time this XBEE has sent us a packet, upload now.
-//        if(IsAddressInArray(xbeeAddressMsb[nrOfUpdates], xbeeAddressLsb[nrOfUpdates]) == true){
-//          prevUpdate = delayTime;
-//         }
+
     }
  }
   
@@ -144,8 +140,6 @@ void loop()
             disconnectGSM();
           }
       }
-     
-      // Siia tuleb laadimise pask!
 }
 
 
@@ -158,13 +152,3 @@ boolean checkFirstTimerOverflow(){ //Check whether lastCheck is bigger than mill
   return(firstOverflow);
 }
 
-// Test to see if a XBee has been seen before.
-//boolean IsAddressInArray(String addressMSB, String addressLSB){
-//  newAddress = false;
-//  for(int i = 0; i < maxUpdates; i++){
-//    if(addressMSB.equalsIgnoreCase(xbeeAddressMsb[i]) && addressLSB.equalsIgnoreCase(xbeeAddressLsb[i])){
-//      newAddress = true;
-//    }
-//  }
-//  return newAddress;
-//}
