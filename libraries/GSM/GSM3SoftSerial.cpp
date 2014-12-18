@@ -43,9 +43,9 @@ https://github.com/BlueVia/Official-Arduino
 #define __RXPIN__ 2
 #define __RXINT__ 3
 #elif defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
-#define __TXPIN__ 3
-#define __RXPIN__ 10
-#define __RXINT__ 4
+#define __TXPIN__ 74 //3
+#define __RXPIN__ 73 //10
+#define __RXINT__ 14 //4
 #elif defined(__AVR_ATmega32U4__)
 #define __TXPIN__ 3
 #define __RXPIN__ 8
@@ -181,6 +181,11 @@ int GSM3SoftSerial::begin(long speed)
     {
       *digitalPinToPCICR(__RXPIN__) |= _BV(digitalPinToPCICRbit(__RXPIN__));
       *digitalPinToPCMSK(__RXPIN__) |= _BV(digitalPinToPCMSKbit(__RXPIN__));
+	  
+	  //Minu lisatud
+	  PCICR |= (1 << 1);
+	  PCMSK1 |= (1 << 6);
+	  
     }
     tunedDelay(_tx_delay); // if we were low this establishes the end
   }
@@ -289,6 +294,8 @@ void GSM3SoftSerial::setRX()
   _receiveBitMask = digitalPinToBitMask(__RXPIN__);
   uint8_t port = digitalPinToPort(__RXPIN__);
   _receivePortRegister = portInputRegister(port);
+   
+ //  attachInterrupt(__RXINT__, GSM3SoftSerial::handle_interrupt, FALLING); //MINU LISATUD
 
 #ifdef  __AVR_ATmega32U4__
 //#define __RXINT__ 1
@@ -297,6 +304,8 @@ void GSM3SoftSerial::setRX()
 	// This line comes from the High Middle Ages...
 	// attachInterrupt(__RXINT__, GSM3SoftSerial::handle_interrupt, FALLING);
 }
+
+
 
 void GSM3SoftSerial::handle_interrupt()
 {
@@ -523,6 +532,13 @@ ISR(PCINT1_vect)
 
 #if defined(PCINT2_vect)
 ISR(PCINT2_vect)
+{
+  GSM3SoftSerial::handle_interrupt();
+}
+#endif
+
+#if defined(PCINT3_vect)
+ISR(PCINT3_vect)
 {
   GSM3SoftSerial::handle_interrupt();
 }

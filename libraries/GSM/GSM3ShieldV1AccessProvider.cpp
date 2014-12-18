@@ -1,7 +1,7 @@
 #include <GSM3ShieldV1AccessProvider.h>
 #include <Arduino.h>
 
-#define __RESETPIN__ 7
+#define __RESETPIN__ 34
 #define __TOUTSHUTDOWN__ 5000
 #define __TOUTMODEMCONFIGURATION__ 5000//equivalent to 30000 because of time in interrupt routine.
 #define __TOUTAT__ 1000
@@ -43,7 +43,7 @@ GSM3_NetworkStatus_t GSM3ShieldV1AccessProvider::begin(char* pin, bool restart, 
 		HWrestart();
 	else 
  		HWstart();
-	int loopCnt = 30;
+  
 	theGSM3ShieldV1ModemCore.gss.begin(9600);
 	// Launch modem configuration commands
 	ModemConfiguration(pin);
@@ -51,11 +51,8 @@ GSM3_NetworkStatus_t GSM3ShieldV1AccessProvider::begin(char* pin, bool restart, 
 	if(synchronous)
 	{
 		// if we shorten this delay, the command fails
-		while(ready()==0 && loopCnt--){ 
+		while(ready()==0) 
 			delay(1000); 
-			Serial.print(loopCnt);
-			Serial.print("... ");
-			}
 	}
 	return getStatus();
 }
