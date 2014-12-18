@@ -59,6 +59,6 @@ class GSM3ShieldV1ModemVerification
 		 */
 		String getIMEI();
 		
-}
+};
 
 #endif
