@@ -2,6 +2,8 @@ ArduSensor Master Device
 ========================
 The current version of the Open Sensor platform.
 
+Due to an oversight with Arduino IDE 1.0.6, it is recommended to use version 1.0.5 as the newer version breaks the (default) GSM library.
+
 To use, add both the XBee and CustomGSM libraries found in /libraries/ in the Arduino IDE (Sketch -> Import Library -> Add Library..., this copies the folders to /Documents/Arduino/libraries).
 
 Then copy and replace the included pins_arduino.h to the Arduino IDE install folder: Arduino\hardware\arduino\variants\mega.
