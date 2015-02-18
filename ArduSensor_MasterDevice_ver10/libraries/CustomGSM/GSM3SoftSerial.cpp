@@ -8,7 +8,7 @@ This file is part of the GSM3 communications library for Arduino
 -- TCP/IP connections
 -- HTTP basic clients
 
-This library has been developed by Telefónica Digital - PDI -
+This library has been developed by TelefÃ³nica Digital - PDI -
 - Physical Internet Lab, as part as its collaboration with
 Arduino and the Open Hardware Community. 
 
@@ -182,7 +182,7 @@ int GSM3SoftSerial::begin(long speed)
       *digitalPinToPCICR(__RXPIN__) |= _BV(digitalPinToPCICRbit(__RXPIN__));
       *digitalPinToPCMSK(__RXPIN__) |= _BV(digitalPinToPCMSKbit(__RXPIN__));
 	  
-	  //Minu lisatud
+	  //Attach interrupts to the used pins.
 	  PCICR |= (1 << 1);
 	  PCMSK1 |= (1 << 6);
 	  
