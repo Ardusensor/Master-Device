@@ -15,7 +15,7 @@
 
 //How many updates to collect before uploading them to the server.
 #define maxUpdates 20
-#define WDTCOUNT 7
+#define WDTCOUNT 10
 // Xbee RSSI pin
 #define xbeeRssiPin 47
 
@@ -34,11 +34,11 @@ ZBRxResponse rx = ZBRxResponse();
 ZBRxIoSampleResponse ioSample = ZBRxIoSampleResponse();
 
 //Server details
-char server[] = ""; //IP address of server
+char server[] = "www.ardusensor.com"; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 /* ID!!!! */
-int ID = 170; //The unique ID of this device.
+int ID = 200; //The unique ID of this device.
 /* ID!!!! */
 
 //Global variables.4
@@ -118,7 +118,9 @@ void loop()
   
      if(millis() - prevUpdate > delayTime || nrOfUpdates >= maxUpdates){ //Sends data if enough time has elapsed or enough data is available.
        nrOfTries++;
+
        initWatchdog(); // Configure and enable WDT.
+
        if(!client.connected()){ //If not connected, connect.
             Serial.println("Starting connections!\n");
             connectGSM();
@@ -151,6 +153,7 @@ void loop()
             disconnectGSM();
           }
         wdt_disable(); // Disable watchdog after a successful upload.
+        wdt_cnt = WDTCOUNT; // Reset counter.
       }
 }
 
@@ -171,18 +174,22 @@ void initWatchdog(){
   SETBIT(WDTCSR, WDCE);
   SETBIT(WDTCSR, WDE);
 
-  // Set Watchdog to interrupt on timeout.
-  SETBIT(WDTCSR, WDIE);
   wdt_enable(WDTO_8S);
+
+    // Set Watchdog to interrupt on timeout.
+  SETBIT(WDTCSR, WDCE);
+  SETBIT(WDTCSR, WDE);
+  SETBIT(WDTCSR, WDIE);
+
   wdt_reset();
   sei(); // Enable interrupts again.
 }
 
-ISR(WDT_vect){
+ISR(WDT_vect){/*
   Serial.print("WDT: ");
   Serial.println(--wdt_cnt);
-
-  if(wdt_cnt <= 0){ /* Check whether enough time has passed to warrant a system reset. 
+*/
+  if(--wdt_cnt <= 0){ /* Check whether enough time has passed to warrant a system reset. 
     If so, configure WDT to reset system instead of throwing an interrupt.*/
     SETBIT(WDTCSR, WDE);
   }
