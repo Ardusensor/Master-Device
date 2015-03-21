@@ -1,5 +1,6 @@
 #include <GSM.h>
 #include <XBee.h>
+#include "Common.h"
 
 #define LED 7 // Led on PIN 13, PB7
 
