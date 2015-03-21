@@ -1,6 +1,7 @@
 #include <GSM.h>
 #include <XBee.h>
 #include "Common.h"
+#include <avr/wdt.h>
 
 #define LED 7 // Led on PIN 13, PB7
 
@@ -14,7 +15,7 @@
 
 //How many updates to collect before uploading them to the server.
 #define maxUpdates 20
-
+#define WDTCOUNT 7
 // Xbee RSSI pin
 #define xbeeRssiPin 47
 
@@ -59,6 +60,15 @@ unsigned long rssi[maxUpdates];
 int buffer[maxUpdates][5]; //Array of updates, this is where the data from updates recieved from XBee are kept until a successful upload.
 String xbeeAddressMsb[maxUpdates]; //Holds the MSB of the unique XBee addresses for all recieved packets. These are sent to the server
 String xbeeAddressLsb[maxUpdates]; //LSB for addresses.
+
+ /* wdt_cnt * 8 seconds gives us a timeout after which the device restarts itself. 
+ This is to avoid all GSM hangups which tend to happen. WDT is enabled before starting data uploads and is 
+ disabled after an upload has completed. wdt_cnt is then set back to it's default value defined
+ in this file's header.
+ The counter is decremented inside the WDT ISR vector. When wdt_cnt reaches 0, the WDT is configured to perform
+ a system reset after which the modem hardware is reset by the Mega MCU.
+ */
+int wdt_cnt = WDTCOUNT;
 
 void setup()
 {
@@ -107,8 +117,8 @@ void loop()
  }
   
      if(millis() - prevUpdate > delayTime || nrOfUpdates >= maxUpdates){ //Sends data if enough time has elapsed or enough data is available.
-     nrOfTries++;
-     
+       nrOfTries++;
+       initWatchdog(); // Configure and enable WDT.
        if(!client.connected()){ //If not connected, connect.
             Serial.println("Starting connections!\n");
             connectGSM();
@@ -140,6 +150,7 @@ void loop()
             disconnectServer();
             disconnectGSM();
           }
+        wdt_disable(); // Disable watchdog after a successful upload.
       }
 }
 
@@ -153,3 +164,43 @@ boolean checkFirstTimerOverflow(){ //Check whether lastCheck is bigger than mill
   return(firstOverflow);
 }
 
+void initWatchdog(){
+  cli(); // Disable all interrupts during the configuration of WDT as a precaution.
+
+  // Setting these bits gives us 4 cycles to modify WDT registers.
+  SETBIT(WDTCSR, WDCE);
+  SETBIT(WDTCSR, WDE);
+
+  // Set Watchdog to interrupt on timeout.
+  SETBIT(WDTCSR, WDIE);
+  wdt_enable(WDTO_8S);
+  wdt_reset();
+  sei(); // Enable interrupts again.
+}
+
+ISR(WDT_vect){
+  Serial.print("WDT: ");
+  Serial.println(--wdt_cnt);
+
+  if(wdt_cnt <= 0){ /* Check whether enough time has passed to warrant a system reset. 
+    If so, configure WDT to reset system instead of throwing an interrupt.*/
+    SETBIT(WDTCSR, WDE);
+  }
+  else{ // If wdt_cnt > 0, reset WDT flags to stay in interrupt mode.
+    SETBIT(WDTCSR, WDIE);
+    CLEARBIT(MCUSR, WDRF); // Clear WDT flag.
+    CLEARBIT(WDTCSR, WDE);
+  }
+}
+
+/*
+void setWatchDogTimeout(){
+  // Setting these bits gives us 4 cycles to modify WDT registers.
+  wdt_reset(); // Reset the watchdog's timer.
+  SETBIT(WDTCSR, WDCE);
+  SETBIT(WDTCSR, WDE);
+
+  // Set Watchdog to timeout after ~8s
+  wdt_enable(WDTO_8S);
+  Serial.println("WDT enabled.");
+}*/

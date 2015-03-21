@@ -2,7 +2,7 @@
 //Buffer layout: [[t_CPU, t_Sensor, voltage, cap, counter], [t_CPU, t_Sensor, voltage, cap, counter]...]
 void handleXbeeRxMessage(uint8_t *data, uint8_t length){
   //Read packet contents into temporary buffer
-  tmp = 0;
+  tmp = "";
   for (int i = 0; i < length; i++){
     tmp += char(data[i]);
   }
@@ -32,7 +32,7 @@ void handleXbeeRxMessage(uint8_t *data, uint8_t length){
     Serial.print(F("Number Of Updates: "));
     Serial.println(++nrOfUpdates);
   
-    tmp = 0;
+    tmp = "";
   }
 }
 
