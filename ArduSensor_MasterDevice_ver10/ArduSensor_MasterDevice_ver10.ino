@@ -199,15 +199,3 @@ ISR(WDT_vect){/*
     CLEARBIT(WDTCSR, WDE);
   }
 }
-
-/*
-void setWatchDogTimeout(){
-  // Setting these bits gives us 4 cycles to modify WDT registers.
-  wdt_reset(); // Reset the watchdog's timer.
-  SETBIT(WDTCSR, WDCE);
-  SETBIT(WDTCSR, WDE);
-
-  // Set Watchdog to timeout after ~8s
-  wdt_enable(WDTO_8S);
-  Serial.println("WDT enabled.");
-}*/
