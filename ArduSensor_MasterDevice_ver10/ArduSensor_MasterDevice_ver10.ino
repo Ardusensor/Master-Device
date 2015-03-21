@@ -37,7 +37,7 @@ char server[] = ""; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 /* ID!!!! */
-int ID = 140; //The unique ID of this device.
+int ID = 170; //The unique ID of this device.
 /* ID!!!! */
 
 //Global variables.4
