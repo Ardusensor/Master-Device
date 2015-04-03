@@ -39,20 +39,29 @@ GSM3_NetworkStatus_t GSM3ShieldV1AccessProvider::begin(char* pin, bool restart, 
 	pinMode(__RESETPIN__, OUTPUT);
 
 	// If asked for modem restart, restart
-	if (restart) 
+	if (restart)
+	{
 		HWrestart();
-	else 
- 		HWstart();
-  
+	}
+	else
+	{
+		HWstart();
+	}	
+
+
 	theGSM3ShieldV1ModemCore.gss.begin(9600);
 	// Launch modem configuration commands
 	ModemConfiguration(pin);
+	
+	unsigned loopCnt = 30;
 	// If synchronous, wait till ModemConfiguration is over
 	if(synchronous)
 	{
 		// if we shorten this delay, the command fails
-		while(ready()==0) 
-			delay(1000); 
+		while(ready()==0 && loopCnt--)
+		{
+			delay(1000);
+		}			
 	}
 	return getStatus();
 }
