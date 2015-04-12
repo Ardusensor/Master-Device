@@ -41,7 +41,7 @@ int port = 18150; //Port for server. 18151 for logs, 18150 for data
 int ID = 200; //The unique ID of this device.
 /* ID!!!! */
 
-//Global variables.4
+//Global variables.
 unsigned long prevUpdate = 1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
 unsigned long delayTime = 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
@@ -68,7 +68,8 @@ String xbeeAddressLsb[maxUpdates]; //LSB for addresses.
  The counter is decremented inside the WDT ISR vector. When wdt_cnt reaches 0, the WDT is configured to perform
  a system reset after which the modem hardware is reset by the Mega MCU.
  */
-int wdt_cnt = WDTCOUNT;
+int wdt_cnt = 1; /* Set wdt_cnt to 1 at the start as modem startup 
+shouldn't take longer than 16 seconds. wdt_cnt is later set to WDTCOUNT. */
 
 void setup()
 {
@@ -83,12 +84,17 @@ void setup()
    Serial.print(F("Max Updates: "));
    Serial.println(maxUpdates);
    Serial.println();
+
+   initWatchdog(); // Start watchdog to guard against modem startup failures.
+
    scannerNetworks.begin(); //For diagnostics info from the GSM module.
    Serial.println();
    pinMode(34, OUTPUT);
    pinMode(xbeeRssiPin, INPUT);
    DDRB |= bit(LED);
    pinMode(LED, OUTPUT); // Status LED, shows modem status as seen by CPU.  
+   wdt_disable();
+   wdt_cnt = WDTCOUNT; // Reset WDT counter.
 }
 
 void loop()
