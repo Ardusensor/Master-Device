@@ -15,7 +15,7 @@
 
 //How many updates to collect before uploading them to the server.
 #define maxUpdates 20
-#define WDTCOUNT 10
+#define WDTCOUNT 450 // 450 * 8s = ~1 hour
 // Xbee RSSI pin
 #define xbeeRssiPin 47
 
@@ -62,8 +62,8 @@ String xbeeAddressMsb[maxUpdates]; //Holds the MSB of the unique XBee addresses 
 String xbeeAddressLsb[maxUpdates]; //LSB for addresses.
 
  /* wdt_cnt * 8 seconds gives us a timeout after which the device restarts itself. 
- This is to avoid all GSM hangups which tend to happen. WDT is enabled before starting data uploads and is 
- disabled after an upload has completed. wdt_cnt is then set back to it's default value defined
+ This is to avoid all hangups. WDT is enabled at startup and is 
+ reset after an upload has completed. wdt_cnt is then set back to it's default value defined
  in this file's header.
  The counter is decremented inside the WDT ISR vector. When wdt_cnt reaches 0, the WDT is configured to perform
  a system reset after which the modem hardware is reset by the Mega MCU.
@@ -95,6 +95,7 @@ void setup()
    pinMode(LED, OUTPUT); // Status LED, shows modem status as seen by CPU.  
    wdt_disable();
    wdt_cnt = WDTCOUNT; // Reset WDT counter.
+   initWatchdog(); // Start watchdog to guard failures.
 }
 
 void loop()
@@ -125,7 +126,6 @@ void loop()
      if(millis() - prevUpdate > delayTime || nrOfUpdates >= maxUpdates){ //Sends data if enough time has elapsed or enough data is available.
        nrOfTries++;
 
-       initWatchdog(); // Configure and enable WDT.
 
        if(!client.connected()){ //If not connected, connect.
             Serial.println("Starting connections!\n");
@@ -158,7 +158,6 @@ void loop()
             disconnectServer();
             disconnectGSM();
           }
-        wdt_disable(); // Disable watchdog after a successful upload.
         wdt_cnt = WDTCOUNT; // Reset counter.
       }
 }
