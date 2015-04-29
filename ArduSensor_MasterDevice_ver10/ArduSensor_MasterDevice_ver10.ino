@@ -38,10 +38,10 @@ char server[] = "www.ardusensor.com"; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 /* ID!!!! */
-int ID = 200; //The unique ID of this device.
+int ID = 170; //The unique ID of this device.
 /* ID!!!! */
 
-//Global variables.4
+//Global variables.
 unsigned long prevUpdate = 1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
 unsigned long delayTime = 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
@@ -119,7 +119,7 @@ void loop()
      if(millis() - prevUpdate > delayTime || nrOfUpdates >= maxUpdates){ //Sends data if enough time has elapsed or enough data is available.
        nrOfTries++;
 
-       initWatchdog(); // Configure and enable WDT.
+       //initWatchdog(); // Configure and enable WDT.
 
        if(!client.connected()){ //If not connected, connect.
             Serial.println("Starting connections!\n");
@@ -185,10 +185,10 @@ void initWatchdog(){
   sei(); // Enable interrupts again.
 }
 
-ISR(WDT_vect){/*
+ISR(WDT_vect){
   Serial.print("WDT: ");
   Serial.println(--wdt_cnt);
-*/
+
   if(--wdt_cnt <= 0){ /* Check whether enough time has passed to warrant a system reset. 
     If so, configure WDT to reset system instead of throwing an interrupt.*/
     SETBIT(WDTCSR, WDE);
