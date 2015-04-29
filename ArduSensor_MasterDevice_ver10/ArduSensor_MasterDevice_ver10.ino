@@ -68,7 +68,7 @@ String xbeeAddressLsb[maxUpdates]; //LSB for addresses.
  The counter is decremented inside the WDT ISR vector. When wdt_cnt reaches 0, the WDT is configured to perform
  a system reset after which the modem hardware is reset by the Mega MCU.
  */
-int wdt_cnt = WDTCOUNT;
+int wdt_cnt = 2;
 
 void setup()
 {
@@ -83,12 +83,19 @@ void setup()
    Serial.print(F("Max Updates: "));
    Serial.println(maxUpdates);
    Serial.println();
+
+   initWatchdog();
    scannerNetworks.begin(); //For diagnostics info from the GSM module.
    Serial.println();
    pinMode(34, OUTPUT);
    pinMode(xbeeRssiPin, INPUT);
    DDRB |= bit(LED);
    pinMode(LED, OUTPUT); // Status LED, shows modem status as seen by CPU.  
+
+
+   wdt_disable();
+   wdt_cnt = WDTCOUNT; // Reset WDT counter.
+
 }
 
 void loop()
@@ -119,7 +126,9 @@ void loop()
      if(millis() - prevUpdate > delayTime || nrOfUpdates >= maxUpdates){ //Sends data if enough time has elapsed or enough data is available.
        nrOfTries++;
 
-       //initWatchdog(); // Configure and enable WDT.
+
+        initWatchdog(); // Configure and enable WDT.
+
 
        if(!client.connected()){ //If not connected, connect.
             Serial.println("Starting connections!\n");
