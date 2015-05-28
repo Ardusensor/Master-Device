@@ -3,6 +3,8 @@
 #include "Common.h"
 #include <avr/wdt.h>
 #include <string.h>
+#include <avr/sleep.h>
+#include <avr/power.h>
 
 #define LED 7 // Led on PIN 13, PB7
 
@@ -21,6 +23,11 @@
 // Xbee RSSI pin
 #define xbeeRssiPin 47
 #define MODEMSLEEPPIN 34
+#define STATUSPIN 10
+#define XBEE_RTS 46
+
+#define MAXSLEEPCYCLES ???
+#define SLEEPTIME ???
 
 //Initialize the library instances
 GSMClient client;
@@ -45,7 +52,7 @@ int ID = 171; //The unique ID of this device.
 /* ID!!!! */
 
 //Global variables.
-unsigned long prevUpdate = 1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
+unsigned long prevUpdate = 0;// 1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
 unsigned long delayTime = 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 boolean firstOverflow = false;
@@ -95,22 +102,45 @@ void setup()
         Serial.println();
         pinMode(MODEMSLEEPPIN, OUTPUT); // Modem sleep pin
         pinMode(xbeeRssiPin, INPUT);
+        pinMode(STATUSPIN, OUTPUT);
+        pinMode(XBEE_RTS, OUTPUT);
         DDRB |= bit(LED);
-        pinMode(LED, OUTPUT); // Status LED, shows modem status as seen by CPU.  
+
+        digitalWrite(STATUSPIN, HIGH);
+        digitalWrite(XBEE_RTS, HIGH);
 
         wdt_disable();
         wdt_cnt = WDTCOUNT; // Reset WDT counter.
+
+        if(prevUpdate == 0){
+                disconnectGSM();
+        }
+
+        initPowerSaving();
+        digitalWrite(XBEE_RTS, LOW); // Ask for data from xbee
+
+        // PA2 will be modem power enable in a future release
+
 }
 
 void loop()
 {
-  //Recieve and handle XBee packets.
-        xbee.readPacket();
-        if (xbee.getResponse().isAvailable()) {
-                bitRead(PORTB, LED) ? bitClear(PORTB, LED) : bitSet(PORTB, LED); // Flip LED
+        bool dosleep = true;
+
+        digitalWrite(XBEE_RTS, LOW);
+        delay(2); // wait for at least one byte
+        if (Serial2.available()) {
+                dosleep = false;
+        }
+        
+        //Recieve and handle XBee packets.
+        while (1) {
+                xbee.readPacket();
+                if (!xbee.getResponse().isAvailable()) break;
+
                 if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
                         xbee.getResponse().getZBRxResponse(rx);
-      
+
                         //Get Rssi of recieved packet
                         rssi[nrOfUpdates] = pulseIn(xbeeRssiPin, HIGH, 100000); //Higher value = better signal
 
@@ -122,13 +152,13 @@ void loop()
                         Serial.println(xbeeAddressLsb[nrOfUpdates]);
                         //showFrameData(); //Prints the whole incoming frame and metadata. Good for debugging.
                         handleXbeeRxMessage(rx.getData(), rx.getDataLength()); //Write the contents of the recieved packet to buffer.
-                        bitRead(PORTB, LED) ? bitClear(PORTB, LED) : bitSet(PORTB, LED);
                 }
         }
   
-        if(millis() - prevUpdate > delayTime || nrOfUpdates >= maxUpdates){ //Sends data if enough time has elapsed or enough data is available.
+        if (1 && (millis() - prevUpdate > delayTime || nrOfUpdates >= maxUpdates)) { //Sends data if enough time has elapsed or enough data is available.
                 nrOfTries++;
                 initWatchdog(); // Configure and enable WDT.
+                power_adc_enable(); // Used to get battery voltage, enabled here to give time to turn on and stabilize
 
                 if(!client.connected()){ //If not connected, connect.
                         Serial.println("Starting connections!\n");
@@ -137,6 +167,7 @@ void loop()
       
                 if (client.connected()){ //If connected, send data.
                         voltage = analogRead(A0); //ADC value of battery voltage
+                        power_adc_disable(); // Disable ADC again as we won't be using it for a while.
             
                         //Send stuff
                         jCoordinatorData();
@@ -161,12 +192,24 @@ void loop()
 
                         disconnectServer();
                         disconnectGSM();
+                        delay(200);
                 }
 
                 wdt_disable(); // Disable watchdog after a successful upload.
                 wdt_cnt = WDTCOUNT; // Reset counter.
         }
 
+        if (dosleep){
+                digitalWrite(XBEE_RTS, HIGH);
+                delay(2);
+                Serial.flush();
+                initSleep();
+        }
+        else {
+                delay(2);
+        }
+
+/*      unused pinging mechanism
         if (Serial.available() > 0){
                 buf[bytes_in++] = Serial.read();
                 if (strcmp(buf, "ping!\r\n") == 0){
@@ -181,6 +224,68 @@ void loop()
                 }
 
         }
+        */
+}
+
+void initPowerSaving()
+{
+        power_twi_disable(); // Disable TWI
+        power_spi_disable(); // Disable SPI
+
+        // Disable unused USARTs
+        power_usart1_disable();
+        power_usart3_disable();
+
+        // Disable timers. Timer0 is used by Arduino, Timer2 is used to wake up device
+        power_timer1_disable();
+        power_timer3_disable();
+        power_timer4_disable();
+        power_timer5_disable();
+
+        power_adc_disable(); // Disable ADC until needed
+}
+
+/*
+        Set to wake up on timer2 compare.
+*/
+void initSleep()
+{
+
+        set_sleep_mode(SLEEP_MODE_PWR_SAVE);
+        cli();        
+
+        power_timer0_disable(); // Stop Arduino timer
+        power_usart2_disable(); // Stop xbee uart
+        power_usart0_disable(); // Stop Serial0
+   
+        init_timer2_sleep(); // Set timer2 to run with 1024 prescaling, interrupt on overflow
+
+        sei();
+        digitalWrite(STATUSPIN, LOW);
+        for (uint16_t i = 0; i < 10; ++i){
+                sleep_mode(); // Go to sleep
+                sleep_disable(); // Program continues from here.
+        }
+        digitalWrite(STATUSPIN, HIGH);
+        
+        power_timer0_enable(); // Start Arduino timer
+
+        power_usart0_enable();
+        power_usart2_enable(); // Start xbee uart
+}
+
+/*
+        The millis() function used in Arduino is declared in wiring.c 
+        It uses timer0 and timer0_OVF_vect to count passed milliseconds. Since we are
+        sleeping the device for extended periods of time, but still want to use
+        the millis() function, we will be adding elapsed milliseconds to
+        "timer0_millis" (declared in wiring.c). This is quite ugly.
+*/
+void init_timer2_sleep()
+{
+        TCNT2 = 0; // Zero timer/counter value
+        TIMSK2 = 1; // Enable overflow interrupt vector
+        TCCR2B = 7; // Set 1024 prescaling
 }
 
 boolean checkFirstTimerOverflow() //Check whether lastCheck is bigger than millis(), this signals whether a restart has occurred or millis() has overflown
@@ -212,12 +317,14 @@ void initWatchdog()
         sei(); // Enable interrupts again.
 }
 
+ISR(TIMER2_OVF_vect)
+{
+        // Set the counter of millis() function forward the amount of time spent in sleep mode
+        // timer0_millis += ;
+}
+
 ISR(WDT_vect)
 {
-        /*
-        Serial.print("WDT: ");
-        Serial.println(--wdt_cnt);
-        */
         if(--wdt_cnt <= 0){ /* Check whether enough time has passed to warrant a system reset. 
                 If so, configure WDT to reset system instead of throwing an interrupt.*/
                 SETBIT(WDTCSR, WDE);

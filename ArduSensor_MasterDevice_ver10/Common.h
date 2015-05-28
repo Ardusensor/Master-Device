@@ -1,11 +1,3 @@
-/*
- * Common.h
- *
- * Created: 13.08.2012 21:09:49
- *  Author: Cmc
- */ 
-
-
 #ifndef COMMON_H_
 #define COMMON_H_
 
@@ -18,8 +10,6 @@
 #define BITCLEAR(x,y) !BITSET((x), (y))
 #define BITSSET(x,y) (((x) & (y)) == (y))
 #define BITSCLEAR(x,y) (((x) & (y)) == 0)
-#define BITVAL(x,y) (((x)>>(y)) & 1)
-
- 
+#define BITVAL(x,y) (((x)>>(y)) & 1) 
 
 #endif /* COMMON_H_ */

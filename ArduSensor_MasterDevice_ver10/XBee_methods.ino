@@ -2,6 +2,10 @@
 //Buffer layout: [[t_CPU, t_Sensor, voltage, cap, counter], [t_CPU, t_Sensor, voltage, cap, counter]...]
 void handleXbeeRxMessage(uint8_t *data, uint8_t length)
 {
+        if (nrOfUpdates >= maxUpdates){
+                return;
+        }
+
         //Read packet contents into temporary buffer
         tmp = "";
         for (int i = 0; i < length; i++){
