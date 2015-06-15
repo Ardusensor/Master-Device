@@ -25,6 +25,8 @@
 #define MODEMSLEEPPIN 34
 #define STATUSPIN 10
 #define XBEE_RTS 46
+#define MODEM_POWER_PIN 2
+#define MODEM_STATUS_PIN 35
 
 #define MAXSLEEPCYCLES ???
 #define SLEEPTIME ???
@@ -52,7 +54,7 @@ int ID = 171; //The unique ID of this device.
 /* ID!!!! */
 
 //Global variables.
-unsigned long prevUpdate = 0;// 1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
+unsigned long prevUpdate = 0; //1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
 unsigned long delayTime = 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 boolean firstOverflow = false;
@@ -78,7 +80,7 @@ String xbeeAddressLsb[maxUpdates]; //LSB for addresses.
  The counter is decremented inside the WDT ISR vector. When wdt_cnt reaches 0, the WDT is configured to perform
  a system reset after which the modem hardware is reset by the Mega MCU.
  */
-int wdt_cnt = 2;
+int wdt_cnt = WDTCOUNT;
 
 int bytes_in = 0;
 char buf[10];
@@ -97,8 +99,6 @@ void setup()
         Serial.println(maxUpdates);
         Serial.println();
 
-        initWatchdog();
-        scannerNetworks.begin(); //For diagnostics info from the GSM module.
         Serial.println();
         pinMode(MODEMSLEEPPIN, OUTPUT); // Modem sleep pin
         pinMode(xbeeRssiPin, INPUT);
@@ -106,14 +106,17 @@ void setup()
         pinMode(XBEE_RTS, OUTPUT);
         DDRB |= bit(LED);
 
+        pinMode(MODEM_POWER_PIN, OUTPUT);
+        pinMode(MODEM_STATUS_PIN, INPUT);
+
         digitalWrite(STATUSPIN, HIGH);
         digitalWrite(XBEE_RTS, HIGH);
+        digitalWrite(MODEM_POWER_PIN, HIGH);
 
-        wdt_disable();
-        wdt_cnt = WDTCOUNT; // Reset WDT counter.
+
 
         if(prevUpdate == 0){
-                disconnectGSM();
+                digitalWrite(MODEM_POWER_PIN, LOW); // Disable power to modem
         }
 
         initPowerSaving();
@@ -155,7 +158,9 @@ void loop()
                 }
         }
   
-        if (1 && (millis() - prevUpdate > delayTime || nrOfUpdates >= maxUpdates)) { //Sends data if enough time has elapsed or enough data is available.
+        if (millis() - prevUpdate > delayTime || nrOfUpdates >= maxUpdates) { //Sends data if enough time has elapsed or enough data is available.
+                digitalWrite(MODEM_POWER_PIN, HIGH); // Enable modem power, power is disabled again in disconnectGSM()
+                
                 nrOfTries++;
                 initWatchdog(); // Configure and enable WDT.
                 power_adc_enable(); // Used to get battery voltage, enabled here to give time to turn on and stabilize
@@ -265,6 +270,8 @@ void initSleep()
                 sleep_mode(); // Go to sleep
                 sleep_disable(); // Program continues from here.
         }
+
+        TCCR2B = 0; // Stop timer2 counter
         digitalWrite(STATUSPIN, HIGH);
         
         power_timer0_enable(); // Start Arduino timer
@@ -318,12 +325,15 @@ void initWatchdog()
 
 ISR(TIMER2_OVF_vect)
 {
-        // Set the counter of millis() function forward the amount of time spent in sleep mode
-        // timer0_millis += ;
+        ;
 }
 
 ISR(WDT_vect)
 {
+        /*
+        Serial.print("WDT: ");
+        Serial.println(wdt_cnt);
+*/
         if(--wdt_cnt <= 0){ /* Check whether enough time has passed to warrant a system reset. 
                 If so, configure WDT to reset system instead of throwing an interrupt.*/
                 SETBIT(WDTCSR, WDE);

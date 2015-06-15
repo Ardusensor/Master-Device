@@ -1,20 +1,29 @@
 //Create GSM connection, then connect to GPRS.
-void connectGSM(){ 
+void connectGSM()
+{
         Serial2.end(); //Stop XBee Serial just in case.
         Serial.println(F("Connecting to GSM network..."));
+
+        //while(digitalRead(MODEM_STATUS_PIN) == LOW);
+       // while(digitalRead(MODEM_STATUS_PIN) == HIGH);
+
+        //Serial.println("Modem up!");
+        delay(1000);
+
         theGSM3ShieldV1ModemCore.println("AT"); //Recommended AT commands to wake up modem. The GSM librabry has a bug that causes the program to hang on begin(), this should help alleviate the problem. A fix has also been implemented into the included GSM library.
         delay(100);
         theGSM3ShieldV1ModemCore.println("AT");
-        delay(100);
+        delay(1000);
   
         if(gsmAccess.begin(PINNUMBER)==GSM_READY){ //Start the GSM connection using the information provided in the main file.
                 Serial.println(F("PIN OK"));
+                scannerNetworks.begin(); //For diagnostics info from the GSM module.                
+                //delay(100);
                 signalStrength = scannerNetworks.getSignalStrength().toInt(); //Signal strength, 0-31 range.
-                delay(1000);
   
                 if(gprs.attachGPRS(GPRS_APN, GPRS_LOGIN, GPRS_PASSWORD)==GPRS_READY){ //Attach GPRS, information must be provided in the main file.
                         Serial.println(F("GPRS OK"));
-                        delay(1000);
+                        //delay(1000);
                         connectServer();
                 }
         }
@@ -41,7 +50,7 @@ void disconnectServer()
         client.flush();
         delay(100);
         client.stop();
-        theGSM3ShieldV1ModemCore.println("AT+QICLOSE"); //Close the TCP/IP connection
+        //theGSM3ShieldV1ModemCore.println("AT+QICLOSE"); //Close the TCP/IP connection
         delay(2000); //Just in case
         Serial.println(F("Disconnected from server."));
 }
@@ -49,8 +58,10 @@ void disconnectServer()
 //Power down the GSM module to save power.
 void disconnectGSM()
 {
-        theGSM3ShieldV1ModemCore.println("AT+QIDEACT");
+        //theGSM3ShieldV1ModemCore.println("AT+QIDEACT");
         gsmAccess.shutdown();
         Serial2.begin(9600); //Start XBee Serial connection again.
         Serial.println(F("GSM shutdown."));
+        delay(1000);
+        digitalWrite(MODEM_POWER_PIN, LOW); // Disable power to modem
 }
