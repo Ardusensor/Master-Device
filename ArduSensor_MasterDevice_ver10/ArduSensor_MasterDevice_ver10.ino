@@ -20,16 +20,17 @@
 #define maxUpdates 20
 #define WDTCOUNT 10
 
-// Xbee RSSI pin
+
+#define ID 200 //The unique ID of this device
+
 #define xbeeRssiPin 47
 #define MODEMSLEEPPIN 34
 #define STATUSPIN 10
 #define XBEE_RTS 46
-#define MODEM_POWER_PIN 2
+#define XBEE_RESET 45
+#define MODEM_POWER_PIN 24
 #define MODEM_STATUS_PIN 35
-
-#define MAXSLEEPCYCLES ???
-#define SLEEPTIME ???
+#define BATTERY_VOLTAGE A14
 
 //Initialize the library instances
 GSMClient client;
@@ -49,14 +50,12 @@ ZBRxIoSampleResponse ioSample = ZBRxIoSampleResponse();
 char server[] = "www.ardusensor.com"; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
-/* ID!!!! */
-int ID = 171; //The unique ID of this device.
-/* ID!!!! */
-
 //Global variables.
-unsigned long prevUpdate = 0; //1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
-unsigned long delayTime = 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
+unsigned long prevUpdate = 1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
+unsigned long delayTime = 300000; // 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
+unsigned long timeSpentSleeping = 0;
+
 boolean firstOverflow = false;
 int nrOfTries = 0; //Count the number of tries and successful uploads to the server for debugging.
 int nrOfSuccess = 0;
@@ -104,6 +103,7 @@ void setup()
         pinMode(xbeeRssiPin, INPUT);
         pinMode(STATUSPIN, OUTPUT);
         pinMode(XBEE_RTS, OUTPUT);
+        pinMode(XBEE_RESET, OUTPUT);
         DDRB |= bit(LED);
 
         pinMode(MODEM_POWER_PIN, OUTPUT);
@@ -112,18 +112,14 @@ void setup()
         digitalWrite(STATUSPIN, HIGH);
         digitalWrite(XBEE_RTS, HIGH);
         digitalWrite(MODEM_POWER_PIN, HIGH);
-
-
+        digitalWrite(XBEE_RESET, HIGH);
 
         if(prevUpdate == 0){
                 digitalWrite(MODEM_POWER_PIN, LOW); // Disable power to modem
         }
 
         initPowerSaving();
-        digitalWrite(XBEE_RTS, LOW); // Ask for data from xbee
-
-        // PA2 will be modem power enable in a future release
-
+        //digitalWrite(XBEE_RTS, LOW); // Ask for data from xbee
 }
 
 void loop()
@@ -144,8 +140,8 @@ void loop()
                 if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
                         xbee.getResponse().getZBRxResponse(rx);
 
-                        //Get Rssi of recieved packet
-                        rssi[nrOfUpdates] = pulseIn(xbeeRssiPin, HIGH, 100000); //Higher value = better signal
+                        //Get Rssi of recieved packet, higher value = better signal
+                        rssi[nrOfUpdates] = pulseIn(xbeeRssiPin, HIGH, 100000);
 
                         XBeeAddress64 senderLongAddress = rx.getRemoteAddress64();
                         xbeeAddressMsb[nrOfUpdates] = String(senderLongAddress.getMsb(), HEX);
@@ -154,11 +150,11 @@ void loop()
                         Serial.print(xbeeAddressMsb[nrOfUpdates]);
                         Serial.println(xbeeAddressLsb[nrOfUpdates]);
                         //showFrameData(); //Prints the whole incoming frame and metadata. Good for debugging.
-                        handleXbeeRxMessage(rx.getData(), rx.getDataLength()); //Write the contents of the recieved packet to buffer.
+                        handleXbeeRxMessage(rx.getData(), rx.getDataLength()); //Write the contents of the received packet to buffer.
                 }
         }
   
-        if (millis() - prevUpdate > delayTime || nrOfUpdates >= maxUpdates) { //Sends data if enough time has elapsed or enough data is available.
+        if ((millis() + timeSpentSleeping - prevUpdate) > delayTime || nrOfUpdates >= maxUpdates) { //Sends data if enough time has elapsed or enough data is available.
                 digitalWrite(MODEM_POWER_PIN, HIGH); // Enable modem power, power is disabled again in disconnectGSM()
                 
                 nrOfTries++;
@@ -171,18 +167,10 @@ void loop()
                 }
       
                 if (client.connected()){ //If connected, send data.
-                        voltage = analogRead(A0); //ADC value of battery voltage
+                        voltage = analogRead(BATTERY_VOLTAGE); //ADC value of battery voltage
                         power_adc_disable(); // Disable ADC again as we won't be using it for a while.
-            
-                        //Send stuff
-                        jCoordinatorData();
-                        for(int i = 0; i < nrOfUpdates; i++){
-                                jDeviceReadings(i);
-                                if(i != nrOfUpdates - 1){ //The comma is needed for JSON formatting.
-                                        client.print(",");
-                                }
-                        }
-                        jUploadEnd();
+						
+                        Upload(); //Send data
 
                         Serial.println(F("\nSent!"));
 
@@ -192,7 +180,9 @@ void loop()
                         Serial.println(nrOfTries);
                         Serial.print(F("Nr of successes: "));
                         Serial.println(nrOfSuccess);
+						
                         prevUpdate = millis(); //Set time of previous update.
+                        timeSpentSleeping = 0;
                         delay(200);
 
                         disconnectServer();
@@ -213,23 +203,6 @@ void loop()
         else {
                 delay(2);
         }
-
-/*      unused pinging mechanism
-        if (Serial.available() > 0){
-                buf[bytes_in++] = Serial.read();
-                if (strcmp(buf, "ping!\r\n") == 0){
-                        bytes_in = 0;
-                        for (int i = 0; i < 10; ++i){
-                                buf[i] = ' ';
-                        }
-                        Serial.println("pong!");
-                }
-                else if(bytes_in >= 10){
-                        bytes_in = 0;
-                }
-
-        }
-        */
 }
 
 void initPowerSaving()
@@ -262,8 +235,8 @@ void initSleep()
         power_usart2_disable(); // Stop xbee uart
         power_usart0_disable(); // Stop Serial0
    
-        init_timer2_sleep(); // Set timer2 to run with 1024 prescaling, interrupt on overflow
 
+        init_timer2_sleep(); // Set timer2 to run with 1024 prescaling, interrupt on overflow
         sei();
         digitalWrite(STATUSPIN, LOW);
         for (uint16_t i = 0; i < 10; ++i){
@@ -272,6 +245,7 @@ void initSleep()
         }
 
         TCCR2B = 0; // Stop timer2 counter
+        timeSpentSleeping += 300;
         digitalWrite(STATUSPIN, HIGH);
         
         power_timer0_enable(); // Start Arduino timer
@@ -280,13 +254,7 @@ void initSleep()
         power_usart2_enable(); // Start xbee uart
 }
 
-/*
-        The millis() function used in Arduino is declared in wiring.c 
-        It uses timer0 and timer0_OVF_vect to count passed milliseconds. Since we are
-        sleeping the device for extended periods of time, but still want to use
-        the millis() function, we will be adding elapsed milliseconds to
-        "timer0_millis" (declared in wiring.c). This is quite ugly.
-*/
+
 void init_timer2_sleep()
 {
         TCNT2 = 0; // Zero timer/counter value
@@ -333,7 +301,7 @@ ISR(WDT_vect)
         /*
         Serial.print("WDT: ");
         Serial.println(wdt_cnt);
-*/
+        */
         if(--wdt_cnt <= 0){ /* Check whether enough time has passed to warrant a system reset. 
                 If so, configure WDT to reset system instead of throwing an interrupt.*/
                 SETBIT(WDTCSR, WDE);

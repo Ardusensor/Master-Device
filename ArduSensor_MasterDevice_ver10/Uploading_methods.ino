@@ -1,3 +1,15 @@
+void Upload()
+{
+        jCoordinatorData();
+        for(int i = 0; i < nrOfUpdates; i++){
+                jDeviceReadings(i);
+                if(i != nrOfUpdates - 1){ //The comma is needed for JSON formatting.
+                        client.print(",");
+                }
+        }
+        jUploadEnd();
+}
+
 //Buffer layout: [[t_CPU, t_Sensor, voltage, cap, counter], [t_CPU, t_Sensor, voltage, cap, counter]...]
 void jCoordinatorData()
 {
