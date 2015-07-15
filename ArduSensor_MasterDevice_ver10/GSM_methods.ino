@@ -3,12 +3,8 @@ void connectGSM()
 {
         Serial.println(F("Connecting to GSM network..."));
 
-        delay(1000);
-
         theGSM3ShieldV1ModemCore.println("AT"); //Recommended AT commands to wake up modem. The GSM librabry has a bug that causes the program to hang on begin(), this should help alleviate the problem. A fix has also been implemented into the included GSM library.
-        delay(100);
         theGSM3ShieldV1ModemCore.println("AT");
-        delay(1000);
   
         if(gsmAccess.begin(PINNUMBER)==GSM_READY){ //Start the GSM connection using the information provided in the main file.
                 Serial.println(F("PIN OK"));
@@ -41,9 +37,7 @@ void connectServer()
 void disconnectServer()
 {
         client.flush();
-        delay(100);
         client.stop();
-        delay(2000); //Just in case
         Serial.println(F("Disconnected from server."));
 }
 
@@ -52,6 +46,5 @@ void disconnectGSM()
 {
         gsmAccess.shutdown();
         Serial.println(F("GSM shutdown."));
-        delay(1000);
         digitalWrite(MODEM_POWER_PIN, LOW); // Disable power to modem
 }

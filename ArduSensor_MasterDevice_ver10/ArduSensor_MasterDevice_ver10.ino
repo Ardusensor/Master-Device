@@ -21,7 +21,7 @@
 #define WDTCOUNT 10
 
 
-#define ID 200 //The unique ID of this device
+#define ID 208 //The unique ID of this device
 
 #define xbeeRssiPin 47
 #define MODEMSLEEPPIN 34
@@ -30,7 +30,7 @@
 #define XBEE_RESET 45
 #define MODEM_POWER_PIN 24
 #define MODEM_STATUS_PIN 35
-#define BATTERY_VOLTAGE A14
+#define BATTERY_VOLTAGE_PIN A14
 
 //Initialize the library instances
 GSMClient client;
@@ -55,6 +55,7 @@ unsigned long prevUpdate = 1600000 - 120000; //Time since previous update in mil
 unsigned long delayTime = 300000; // 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 unsigned long timeSpentSleeping = 0;
+unsigned long totalTimeSlept = 0;
 
 boolean firstOverflow = false;
 int nrOfTries = 0; //Count the number of tries and successful uploads to the server for debugging.
@@ -98,9 +99,9 @@ void setup()
         Serial.println(maxUpdates);
         Serial.println();
 
-        Serial.println();
         pinMode(MODEMSLEEPPIN, OUTPUT); // Modem sleep pin
         pinMode(xbeeRssiPin, INPUT);
+        pinMode(BATTERY_VOLTAGE_PIN, INPUT);
         pinMode(STATUSPIN, OUTPUT);
         pinMode(XBEE_RTS, OUTPUT);
         pinMode(XBEE_RESET, OUTPUT);
@@ -118,7 +119,9 @@ void setup()
                 digitalWrite(MODEM_POWER_PIN, LOW); // Disable power to modem
         }
 
+        analogReference(INTERNAL2V56);
         initPowerSaving();
+
         //digitalWrite(XBEE_RTS, LOW); // Ask for data from xbee
 }
 
@@ -153,8 +156,8 @@ void loop()
                         handleXbeeRxMessage(rx.getData(), rx.getDataLength()); //Write the contents of the received packet to buffer.
                 }
         }
-  
-        if ((millis() + timeSpentSleeping - prevUpdate) > delayTime || nrOfUpdates >= maxUpdates) { //Sends data if enough time has elapsed or enough data is available.
+
+        if ((millis() + totalTimeSlept - prevUpdate) > delayTime || nrOfUpdates >= maxUpdates) { //Sends data if enough time has elapsed or enough data is available.
                 digitalWrite(MODEM_POWER_PIN, HIGH); // Enable modem power, power is disabled again in disconnectGSM()
                 
                 nrOfTries++;
@@ -167,7 +170,9 @@ void loop()
                 }
       
                 if (client.connected()){ //If connected, send data.
-                        voltage = analogRead(BATTERY_VOLTAGE); //ADC value of battery voltage
+                        // ADC value of battery voltage, real voltage = ((read_voltage * 2.56 * 23) / 1023) / 13)
+                        voltage = analogRead(BATTERY_VOLTAGE_PIN); 
+
                         power_adc_disable(); // Disable ADC again as we won't be using it for a while.
 						
                         Upload(); //Send data
@@ -180,14 +185,15 @@ void loop()
                         Serial.println(nrOfTries);
                         Serial.print(F("Nr of successes: "));
                         Serial.println(nrOfSuccess);
-						
-                        prevUpdate = millis(); //Set time of previous update.
+			
+                        prevUpdate = millis() + totalTimeSlept; //Set time of previous update.
+
                         timeSpentSleeping = 0;
-                        delay(200);
+                        //delay(200);
 
                         disconnectServer();
                         disconnectGSM();
-                        delay(200);
+                        //delay(200);
                 }
 
                 wdt_disable(); // Disable watchdog after a successful upload.
@@ -200,7 +206,7 @@ void loop()
                 Serial.flush();
                 initSleep();
         }
-        else {
+        else{
                 delay(2);
         }
 }
@@ -245,7 +251,7 @@ void initSleep()
         }
 
         TCCR2B = 0; // Stop timer2 counter
-        timeSpentSleeping += 300;
+        totalTimeSlept += 300;
         digitalWrite(STATUSPIN, HIGH);
         
         power_timer0_enable(); // Start Arduino timer
@@ -264,11 +270,11 @@ void init_timer2_sleep()
 
 boolean checkFirstTimerOverflow() //Check whether lastCheck is bigger than millis(), this signals whether a restart has occurred or millis() has overflown
 {
-        if(lastCheck > millis()){
+        if(lastCheck > millis() + timeSpentSleeping){
               firstOverflow = true;
         }
   
-        lastCheck = millis();
+        lastCheck = millis() + timeSpentSleeping;
         return(firstOverflow);
 }
 
