@@ -18,7 +18,6 @@ void connectGSM()
         }
 }
 
-
 //Connect to server, information must be provided in the main file. 
 void connectServer()
 {

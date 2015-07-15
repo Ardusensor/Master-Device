@@ -7,77 +7,29 @@ void handleXbeeRxMessage(uint8_t *data, uint8_t length)
                 return;
         }
 
-        //Read packet contents into temporary buffer
-        tmp = "";
-        for (int i = 0; i < length; i++){
-                tmp += char(data[i]);
-        }
-
-        Serial.print(F("Packet: "));
-        Serial.println(tmp);
-
-        //Check packet integrity and filter data
-        if(tmp.startsWith("<") && tmp.endsWith(">")){
-                buffer[nrOfUpdates][0] = tmp.substring(1, tmp.indexOf(";")).toInt();
-                clearRead();
-
-                buffer[nrOfUpdates][1] = tmp.substring(tmp.lastIndexOf("x") + 1).toInt();
-                clearRead();
-
-                buffer[nrOfUpdates][2] = tmp.substring(tmp.lastIndexOf("x") + 1).toInt();
-                clearRead();
-
-                buffer[nrOfUpdates][3] = tmp.substring(tmp.lastIndexOf("x") + 1).toInt();
-                clearRead();
-
-                buffer[nrOfUpdates][4] = tmp.substring(tmp.lastIndexOf("x") + 1).toInt();
-
-
-                Serial.print("RSSI: ");
-                Serial.println(rssi[nrOfUpdates]);
-                Serial.print(F("Number Of Updates: "));
-                Serial.println(++nrOfUpdates);
-
-                tmp = "";
-        }
-}
-
-void handleXbeeRxMessage2(uint8_t *data, uint8_t length)
-{
-        if (nrOfUpdates >= maxUpdates){
-                return;
-        }
-
-        char tmp[length + 1];
+        char tmp_1[30]; // Max packet size shouldn't be more than 22 characters, including \0
 
         for (int i = 0; i < length; ++i){
-                tmp[i] = (char)data[i];
+                tmp_1[i] = (char)data[i];
         }
-        tmp[length + 1] = '\0'; // Append nullcharacter to mark end of string
 
-        if(tmp[0] == '<' && tmp[length - 1] == '>'){
-                sscanf(tmp, "<%d;%d;%d;%d;%d>",
-                        buffer[nrOfUpdates][0], buffer[nrOfUpdates][1],
-                        buffer[nrOfUpdates][2], buffer[nrOfUpdates][3],
-                        buffer[nrOfUpdates][4]);
+        tmp_1[length] = '\0'; // Append nullcharacter to mark end of string
 
-                Serial.print("RSSI: ");
+        Serial.print(F("Packet: "));
+        Serial.println(tmp_1);
+
+        if(tmp_1[0] == '<' && tmp_1[length - 1] == '>'){
+                sscanf(tmp_1, "<%d;%d;%d;%d;%d>",
+                        &buffer[nrOfUpdates][0], &buffer[nrOfUpdates][1],
+                        &buffer[nrOfUpdates][2], &buffer[nrOfUpdates][3],
+                        &buffer[nrOfUpdates][4]);
+
+                Serial.print(F("RSSI: "));
                 Serial.println(rssi[nrOfUpdates]);
                 Serial.print(F("Number Of Updates: "));
                 Serial.println(++nrOfUpdates);
         }
 }
-
-
-//Clears read data from packet for simpler formatting.
-void clearRead()
-{
-        int firstSemi = tmp.indexOf(";");
-        for (int i = 0; i <= firstSemi; i++){
-                tmp.setCharAt(i, 'x');
-        }
-}
-
 
 //Print the contents of revieced frame.
 void showFrameData()

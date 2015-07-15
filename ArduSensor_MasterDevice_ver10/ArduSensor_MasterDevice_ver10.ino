@@ -5,32 +5,10 @@
 #include <string.h>
 #include <avr/sleep.h>
 #include <avr/power.h>
-
-#define LED 7 // Led on PIN 13, PB7
-
-//This data should reflect your SIM card and your operator's settings. Refer to your operators website for the information.
-#define PINNUMBER ""  // PIN Number
-
-// APN data
-#define GPRS_APN       "internet.tele2.ee" //GPRS APN
-#define GPRS_LOGIN     "wap"    //GPRS login
-#define GPRS_PASSWORD  "wap" //GPRS password
-
-//How many updates to collect before uploading them to the server.
-#define maxUpdates 20
-#define WDTCOUNT 10
-
+#include "ArduSensor_MasterDevice_ver10.h"
 
 #define ID 208 //The unique ID of this device
 
-#define xbeeRssiPin 47
-#define MODEMSLEEPPIN 34
-#define STATUSPIN 10
-#define XBEE_RTS 46
-#define XBEE_RESET 45
-#define MODEM_POWER_PIN 24
-#define MODEM_STATUS_PIN 35
-#define BATTERY_VOLTAGE_PIN A14
 
 //Initialize the library instances
 GSMClient client;
@@ -51,7 +29,7 @@ char server[] = "www.ardusensor.com"; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 //Global variables.
-unsigned long prevUpdate = 1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
+unsigned long prevUpdate = 0; // 1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
 unsigned long delayTime = 300000; // 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 unsigned long timeSpentSleeping = 0;
@@ -63,7 +41,6 @@ int nrOfSuccess = 0;
 int nrOfUpdates = 0; //Don't change this. This keeps count of the number of data packets recieved from End Devices.
 
 int voltage; //Battery voltage
-String tmp; //Holds an XBee packet while reading data from it.
 
 int signalStrength;
 unsigned long rssi[maxUpdates];
@@ -81,9 +58,6 @@ String xbeeAddressLsb[maxUpdates]; //LSB for addresses.
  a system reset after which the modem hardware is reset by the Mega MCU.
  */
 int wdt_cnt = WDTCOUNT;
-
-int bytes_in = 0;
-char buf[10];
 
 void setup()
 {
@@ -105,10 +79,9 @@ void setup()
         pinMode(STATUSPIN, OUTPUT);
         pinMode(XBEE_RTS, OUTPUT);
         pinMode(XBEE_RESET, OUTPUT);
-        DDRB |= bit(LED);
-
         pinMode(MODEM_POWER_PIN, OUTPUT);
         pinMode(MODEM_STATUS_PIN, INPUT);
+        DDRB |= bit(LED);
 
         digitalWrite(STATUSPIN, HIGH);
         digitalWrite(XBEE_RTS, HIGH);
@@ -121,8 +94,6 @@ void setup()
 
         analogReference(INTERNAL2V56);
         initPowerSaving();
-
-        //digitalWrite(XBEE_RTS, LOW); // Ask for data from xbee
 }
 
 void loop()
@@ -149,9 +120,11 @@ void loop()
                         XBeeAddress64 senderLongAddress = rx.getRemoteAddress64();
                         xbeeAddressMsb[nrOfUpdates] = String(senderLongAddress.getMsb(), HEX);
                         xbeeAddressLsb[nrOfUpdates] = String(senderLongAddress.getLsb(), HEX);
+
                         Serial.print(F("\nAddress: "));
                         Serial.print(xbeeAddressMsb[nrOfUpdates]);
                         Serial.println(xbeeAddressLsb[nrOfUpdates]);
+
                         //showFrameData(); //Prints the whole incoming frame and metadata. Good for debugging.
                         handleXbeeRxMessage(rx.getData(), rx.getDataLength()); //Write the contents of the received packet to buffer.
                 }
@@ -160,12 +133,15 @@ void loop()
         if ((millis() + totalTimeSlept - prevUpdate) > delayTime || nrOfUpdates >= maxUpdates) { //Sends data if enough time has elapsed or enough data is available.
                 digitalWrite(MODEM_POWER_PIN, HIGH); // Enable modem power, power is disabled again in disconnectGSM()
                 
+                digitalWrite(XBEE_RESET, LOW);
                 nrOfTries++;
                 initWatchdog(); // Configure and enable WDT.
+                digitalWrite(XBEE_RESET, HIGH); // Reset the xbee in case the buffer's gone wonky.
+
                 power_adc_enable(); // Used to get battery voltage, enabled here to give time to turn on and stabilize
 
                 if(!client.connected()){ //If not connected, connect.
-                        Serial.println("Starting connections!\n");
+                        Serial.println(F("Starting connections!\n"));
                         connectGSM();
                 }
       
@@ -189,11 +165,9 @@ void loop()
                         prevUpdate = millis() + totalTimeSlept; //Set time of previous update.
 
                         timeSpentSleeping = 0;
-                        //delay(200);
 
                         disconnectServer();
                         disconnectGSM();
-                        //delay(200);
                 }
 
                 wdt_disable(); // Disable watchdog after a successful upload.
