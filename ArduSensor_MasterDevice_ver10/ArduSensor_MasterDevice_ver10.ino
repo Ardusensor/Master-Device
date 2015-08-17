@@ -7,7 +7,7 @@
 #include <avr/power.h>
 #include "ArduSensor_MasterDevice_ver10.h"
 
-#define ID 208 //The unique ID of this device
+#define ID 2006 //The unique ID of this device
 
 
 //Initialize the library instances
@@ -29,8 +29,8 @@ char server[] = "www.ardusensor.com"; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 //Global variables.
-unsigned long prevUpdate = 0; // 1600000 - 120000; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
-unsigned long delayTime = 300000; // 1600000; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
+unsigned long prevUpdate = -1; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
+unsigned long delayTime = DELAYTIME; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 unsigned long timeSpentSleeping = 0;
 unsigned long totalTimeSlept = 0;
@@ -59,6 +59,10 @@ String xbeeAddressLsb[maxUpdates]; //LSB for addresses.
  */
 int wdt_cnt = WDTCOUNT;
 
+enum power_states power_state = MODE_NORMAL;
+int battery_voltages[10];
+int batvol_cnt = 0;
+
 void setup()
 {
         Serial2.begin(9600); //Serial connection to XBee.
@@ -74,23 +78,19 @@ void setup()
         Serial.println();
 
         pinMode(MODEMSLEEPPIN, OUTPUT); // Modem sleep pin
-        pinMode(xbeeRssiPin, INPUT);
-        pinMode(BATTERY_VOLTAGE_PIN, INPUT);
         pinMode(STATUSPIN, OUTPUT);
         pinMode(XBEE_RTS, OUTPUT);
         pinMode(XBEE_RESET, OUTPUT);
         pinMode(MODEM_POWER_PIN, OUTPUT);
+
+        pinMode(xbeeRssiPin, INPUT);
         pinMode(MODEM_STATUS_PIN, INPUT);
+
         DDRB |= bit(LED);
 
-        digitalWrite(STATUSPIN, HIGH);
         digitalWrite(XBEE_RTS, HIGH);
         digitalWrite(MODEM_POWER_PIN, HIGH);
         digitalWrite(XBEE_RESET, HIGH);
-
-        if(prevUpdate == 0){
-                digitalWrite(MODEM_POWER_PIN, LOW); // Disable power to modem
-        }
 
         analogReference(INTERNAL2V56);
         initPowerSaving();
@@ -100,12 +100,31 @@ void loop()
 {
         bool dosleep = true;
 
+        delay(1);
+        battery_voltages[batvol_cnt] = analogRead(BATTERY_VOLTAGE_PIN);
+        batvol_cnt >= 9 ? batvol_cnt = 0 : batvol_cnt++; // Don't let batvol_cnt exceed 10
+
+        voltage = runningAverage();
+        power_state = setPowerState();
+
+        if(power_state == MODE_NORMAL){
+                delayTime = DELAYTIME;
+                digitalWrite(XBEE_RESET, HIGH);
+        }
+        else if(power_state == MODE_POWER_SAVE){
+                delayTime = DELAYTIME * 2;
+                digitalWrite(XBEE_RESET, HIGH);
+        }
+        else{
+                digitalWrite(XBEE_RESET, LOW); // Turn off xbee to save ~25mA
+        }
+
         digitalWrite(XBEE_RTS, LOW);
         delay(2); // wait for at least one byte
         if (Serial2.available()) {
                 dosleep = false;
         }
-        
+
         //Recieve and handle XBee packets.
         while (1) {
                 xbee.readPacket();
@@ -130,15 +149,12 @@ void loop()
                 }
         }
 
-        if ((millis() + totalTimeSlept - prevUpdate) > delayTime || nrOfUpdates >= maxUpdates) { //Sends data if enough time has elapsed or enough data is available.
+        if (((millis() + totalTimeSlept - prevUpdate) > delayTime || nrOfUpdates >= maxUpdates) && power_state != MODE_SLEEP) { //Sends data if enough time has elapsed or enough data is available, and battery voltage permits it
                 digitalWrite(MODEM_POWER_PIN, HIGH); // Enable modem power, power is disabled again in disconnectGSM()
-                
                 digitalWrite(XBEE_RESET, LOW);
                 nrOfTries++;
                 initWatchdog(); // Configure and enable WDT.
                 digitalWrite(XBEE_RESET, HIGH); // Reset the xbee in case the buffer's gone wonky.
-
-                power_adc_enable(); // Used to get battery voltage, enabled here to give time to turn on and stabilize
 
                 if(!client.connected()){ //If not connected, connect.
                         Serial.println(F("Starting connections!\n"));
@@ -148,9 +164,7 @@ void loop()
                 if (client.connected()){ //If connected, send data.
                         // ADC value of battery voltage, real voltage = ((read_voltage * 2.56 * 23) / 1023) / 13)
                         voltage = analogRead(BATTERY_VOLTAGE_PIN); 
-
-                        power_adc_disable(); // Disable ADC again as we won't be using it for a while.
-						
+			
                         Upload(); //Send data
 
                         Serial.println(F("\nSent!"));
@@ -185,6 +199,48 @@ void loop()
         }
 }
 
+enum power_states setPowerState()
+{
+        enum power_states tmp;
+        enum power_states prev = power_state;
+
+        if(voltage >= VOLTAGE_NORMAL){
+                tmp = MODE_NORMAL;
+        }
+        else if(voltage >= VOLTAGE_POWER_SAVE && voltage < VOLTAGE_NORMAL){
+                tmp = MODE_POWER_SAVE;
+        }
+        else{
+                tmp = MODE_SLEEP;
+        }
+
+        if(tmp != prev){
+                Serial.print(F("Power mode set to: "));
+                Serial.println(power_state_names[tmp]);
+        }
+        return tmp;
+}
+
+int runningAverage()
+{
+        int tmp = 0;
+        for(int i = 0; i < 10; i++){
+                tmp += battery_voltages[i];
+        }
+
+        tmp /= 10;
+        return tmp;
+}
+
+void printVoltages()
+{
+        for(int i=0; i < 10; i++){
+                Serial.print(battery_voltages[i]);
+                Serial.print(" ");
+        }
+        Serial.println();
+}
+
 void initPowerSaving()
 {
         power_twi_disable(); // Disable TWI
@@ -199,8 +255,6 @@ void initPowerSaving()
         power_timer3_disable();
         power_timer4_disable();
         power_timer5_disable();
-
-        power_adc_disable(); // Disable ADC until needed
 }
 
 /*
@@ -218,7 +272,6 @@ void initSleep()
 
         init_timer2_sleep(); // Set timer2 to run with 1024 prescaling, interrupt on overflow
         sei();
-        digitalWrite(STATUSPIN, LOW);
         for (uint16_t i = 0; i < 10; ++i){
                 sleep_mode(); // Go to sleep
                 sleep_disable(); // Program continues from here.
@@ -226,7 +279,6 @@ void initSleep()
 
         TCCR2B = 0; // Stop timer2 counter
         totalTimeSlept += 300;
-        digitalWrite(STATUSPIN, HIGH);
         
         power_timer0_enable(); // Start Arduino timer
 
@@ -278,10 +330,6 @@ ISR(TIMER2_OVF_vect)
 
 ISR(WDT_vect)
 {
-        /*
-        Serial.print("WDT: ");
-        Serial.println(wdt_cnt);
-        */
         if(--wdt_cnt <= 0){ /* Check whether enough time has passed to warrant a system reset. 
                 If so, configure WDT to reset system instead of throwing an interrupt.*/
                 SETBIT(WDTCSR, WDE);
