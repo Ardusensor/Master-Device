@@ -46,10 +46,9 @@ void jDeviceReadings(int nr)
         client.print(buffer[nr][2]);
         client.flush();
         client.print(F(",\"temperature\":"));
-//        client.print(buffer[nr][0]);
         client.print(postTemperature (nr));
         client.print(F(",\"battery_voltage\":"));
-        client.print(buffer[nr][1]);
+        client.print(postVoltage (nr));
         client.print(F(",\"moisture\":"));
         client.flush();
         client.print(buffer[nr][3]);

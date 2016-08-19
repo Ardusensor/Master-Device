@@ -369,3 +369,19 @@ float postTemperature (int nr)
 }
 
 ///TEMPERATURE READ///
+
+///POST VOLTAGE MEASUREMENT///
+
+float postVoltage (int nr)
+{
+    float postVolt,
+        R1 = 75,
+        R2 = 25.5,
+        postVref = 1.1;  //ADC voltage reference [V]
+  
+  postVolt = (buffer[nr][1] * postVref / 1023) / (25.5 / 100.5);
+  
+  return postVolt;
+}
+
+///POST VOLTAGE MEASUREMENT///

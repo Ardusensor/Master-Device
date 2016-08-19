@@ -9,7 +9,7 @@
 //How many updates to collect before uploading them to the server.
 #define maxUpdates 20
 #define WDTCOUNT 10
-#define DELAYTIME 1800000 // 300000 //
+#define DELAYTIME 3654060 // 300000 //
 
 #define xbeeRssiPin 47
 #define MODEMSLEEPPIN 34
