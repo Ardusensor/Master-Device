@@ -29,7 +29,7 @@ char server[] = "www.ardusensor.com"; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 //Global variables.
-unsigned long prevUpdate = 0; //-1; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
+unsigned long prevUpdate = 30000; //-1; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
 unsigned long delayTime = DELAYTIME; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 unsigned long timeSpentSleeping = 0;
