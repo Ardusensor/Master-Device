@@ -7,7 +7,7 @@
 #include <avr/power.h>
 #include "ArduSensor_MasterDevice_ver10.h"
 
-#define ID 2006 //The unique ID of this device
+#define ID 4000 //The unique ID of this device
 
 
 //Initialize the library instances
@@ -29,7 +29,7 @@ char server[] = "www.ardusensor.com"; //IP address of server
 int port = 18150; //Port for server. 18151 for logs, 18150 for data
 
 //Global variables.
-unsigned long prevUpdate = -1; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
+unsigned long prevUpdate = 0; //-1; //Time since previous update in milliseconds. Set to 0 if immediate upload after boot is unwanted.
 unsigned long delayTime = DELAYTIME; //Minutes * seconds * milliseconds. Time between data uploads in milliseconds
 unsigned long lastCheck = 0; //Used to check whether the first millis() overflow has occurred to keep track of restarts.
 unsigned long timeSpentSleeping = 0;
@@ -40,13 +40,13 @@ int nrOfTries = 0; //Count the number of tries and successful uploads to the ser
 int nrOfSuccess = 0;
 int nrOfUpdates = 0; //Don't change this. This keeps count of the number of data packets recieved from End Devices.
 
-int voltage; //Battery voltage
+float voltage; //Battery voltage
 
 int signalStrength;
 unsigned long rssi[maxUpdates];
 
 //NB! Size of buffer[Max collected data][Max data length]. Max data length needs to be long enough to hold the longest possible packet from the Sensors.
-int buffer[maxUpdates][5]; //Array of updates, this is where the data from updates recieved from XBee are kept until a successful upload.
+unsigned int buffer[maxUpdates][5]; //Array of updates, this is where the data from updates recieved from XBee are kept until a successful upload.
 String xbeeAddressMsb[maxUpdates]; //Holds the MSB of the unique XBee addresses for all recieved packets. These are sent to the server
 String xbeeAddressLsb[maxUpdates]; //LSB for addresses.
 
@@ -163,7 +163,8 @@ void loop()
       
                 if (client.connected()){ //If connected, send data.
                         // ADC value of battery voltage, real voltage = ((read_voltage * 2.56 * 23) / 1023) / 13)
-                        voltage = analogRead(BATTERY_VOLTAGE_PIN); 
+                        int temp = analogRead (BATTERY_VOLTAGE_PIN);
+                        voltage = ((temp * 2.56 * 23) / 1023) / 13; 
 			
                         Upload(); //Send data
 
@@ -340,3 +341,31 @@ ISR(WDT_vect)
                 CLEARBIT(WDTCSR, WDE);
         }
 }
+
+///TEMPERATURE READ///
+
+float temperatureRead (char inputPin)
+{
+  float temperature,
+        V0C = 0.5,    //Output voltage at 0*C [V]
+        Tc = 0.01,    //Voltage to temperature coefficient [V/*C]
+        Vref = 2.56;  //ADC voltage reference [V]
+  
+  temperature = (((analogRead (inputPin) * Vref / 1023) - V0C) / Tc) + 273.15;
+  
+  return temperature;
+}
+
+float postTemperature (int nr)
+{
+    float postTemp,
+        postV0C = 0.5,    //Output voltage at 0*C [V]
+        postTc = 0.01,    //Voltage to temperature coefficient [V/*C]
+        postVref = 1.1;  //ADC voltage reference [V]
+  
+  postTemp = (((buffer[nr][0] * postVref / 1023) - postV0C) / postTc) + 273.15;
+  
+  return postTemp;
+}
+
+///TEMPERATURE READ///

@@ -21,6 +21,8 @@ void jCoordinatorData()
         client.flush(); //Trust me, you want these.
         client.print(F(",\"battery_voltage\":"));
         client.print(voltage);
+        client.print(",\"temperature\":");
+        client.print(temperatureRead (MAIN_TEMPERATURE));
         client.print(F(",\"uptime\":"));
         client.print(millis() + totalTimeSlept);
         client.flush();
@@ -40,12 +42,13 @@ void jDeviceReadings(int nr)
         client.print(F("{\"sensor_id\":\""));
         client.print(xbeeAddressMsb[nr]);
         client.print(xbeeAddressLsb[nr]);
-        client.print(F("\",\"battery_voltage\":"));
+        client.print(F("\",\"calib_sensor\":"));
         client.print(buffer[nr][2]);
         client.flush();
-        client.print(F(",\"cpu_temperature\":"));
-        client.print(buffer[nr][0]);
-        client.print(F(",\"sensor_temperature\":"));
+        client.print(F(",\"temperature\":"));
+//        client.print(buffer[nr][0]);
+        client.print(postTemperature (nr));
+        client.print(F(",\"battery_voltage\":"));
         client.print(buffer[nr][1]);
         client.print(F(",\"moisture\":"));
         client.flush();

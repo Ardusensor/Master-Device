@@ -19,6 +19,7 @@
 #define MODEM_POWER_PIN 24
 #define MODEM_STATUS_PIN 35
 #define BATTERY_VOLTAGE_PIN A14
+#define MAIN_TEMPERATURE A1
 #define LED 7 // Led on PIN 13, PB7
 
 // Power saving mode defines
